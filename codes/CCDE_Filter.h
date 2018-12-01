@@ -61,6 +61,7 @@ private:
 		}
 		return sum;
 	}
+
 	void _updated_buffer(CircularBuffer *buff, double value) {
 		buff->new_value(value);
 	}
@@ -286,5 +287,68 @@ public:
 	}
 };
 
+
+class CrossTalkCanceller {
+private:
+	int _h_i_size = 16;
+	double *_h_ipsilateral = new double[16]{ 1.0, 0.0, 0.0, 0.0, 0.0,
+											0.0, 0.0, 0.0, 0.0, 0.0,
+											0.0, 0.0, 0.05853095, 0.44806808, 0.8575164,
+											0. };
+
+	int _h_c_size = 16;
+	double *_h_contralateral = new double[16]{ 0.0, 0.0, 0.0, 0.0, 0.0,
+											  0.0, -0.2419317, -0.9260218, 0.0, 0.0,
+											  0.0, 0.0, 0.0, 0.0, 0.0,
+											  0. };
+	CCDE_Filter *filter_ll = NULL;
+	CCDE_Filter *filter_rl = NULL;
+	CCDE_Filter *filter_lr = NULL;
+	CCDE_Filter *filter_rr = NULL;
+
+	double l_left = 0;
+	double r_left = 0;
+	double left_out = 0;
+
+	double r_right = 0;
+	double l_right = 0;
+	double right_out = 0;
+
+	double output[2]{ 0, 0 };
+
+public:
+	CrossTalkCanceller() {
+		setup_filters(_h_ipsilateral, _h_i_size, _h_contralateral, _h_c_size);
+	}
+
+	CrossTalkCanceller(double h_ipsilateral[], int h_i_size, double h_contralateral[], int h_c_size) {
+		setup_filters(h_ipsilateral, h_i_size, h_contralateral, h_c_size);
+	}
+
+	void setup_filters(double h_ipsilateral[], int h_i_size, double h_contralateral[], int h_c_size) {
+		_h_i_size = h_i_size;
+		_h_ipsilateral = h_ipsilateral;
+		_h_c_size = h_c_size;
+		_h_contralateral = h_contralateral;
+		filter_ll = new CCDE_Filter(h_ipsilateral, h_i_size, new double[1]{ 1 }, 1);
+		filter_rl = new CCDE_Filter(h_contralateral, h_c_size, new double[1]{ 1 }, 1);
+		filter_lr = new CCDE_Filter(h_contralateral, h_c_size, new double[1]{ 1 }, 1);
+		filter_rr = new CCDE_Filter(h_ipsilateral, h_i_size, new double[1]{ 1 }, 1);
+	}
+
+	double *new_output(double left, double right) {
+		l_left = (*filter_ll).new_output(left);
+		r_left = (*filter_rl).new_output(right);
+		left_out = l_left + r_left;
+
+		l_right = (*filter_lr).new_output(left);
+		r_right = (*filter_rr).new_output(right);
+		right_out = r_right + l_right;
+
+		output[0] = left_out;
+		output[1] = right_out;
+		return output;
+	}
+};
 
 #endif //FILTERS_CCDE_FILTER_H
