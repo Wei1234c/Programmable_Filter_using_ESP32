@@ -1,6 +1,6 @@
 #include <iostream>
 #include "CCDE_Filter.h"
- 
+
 
 int main() {
     double b[2]{2, 2};
